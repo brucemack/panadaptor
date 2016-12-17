@@ -1,0 +1,70 @@
+<html>
+  <head>
+    <style>
+BODY {
+  padding: 0px;
+  margin: 0px;
+}
+#canvas0 {
+  background: black;
+}
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas0" width="512" height="512"></canvas>
+    <script src="js/jquery/jquery.min.js"></script>
+    <script type="text/javascript">
+
+var canvas = document.getElementById("canvas0");
+var ctx = canvas.getContext("2d");
+
+var lineCount = 128;
+var bucketCount = 64;
+
+var scaleX = 8;
+var scaleY = 8;
+
+var maxMag = 100;
+var lines = [];
+
+for (var i = 0; i < lineCount; i++) {
+  lines.push([]);
+}
+
+function moveDown() {
+
+  for (var i = lineCount - 1; i > 0; i--) {
+    lines[i] = lines[i-1];
+  }
+  lines[0] = [];
+}
+
+function render() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  var r = 0,g = 255,b = 0,a = 255;
+  for (var y = 0; y < lineCount && y < lines.length; y++) {
+    for (var x = 0; x < bucketCount && x< lines[y].length; x++) {
+      g = Math.trunc((lines[y][x] / maxMag) * 255);
+      ctx.fillStyle = "rgba("+r+","+g+","+b+","+(a/255)+")";
+      ctx.fillRect(x * scaleX,y * scaleY,scaleX,scaleY);
+    }
+  }
+}
+
+setInterval(function() {
+
+  // Get some data from the server
+  $.getJSON("/data",function(data) {
+      // Generate data
+      moveDown();
+      // Insert the new row
+      lines[0] = data;
+      // Force a draw
+      render();
+  });
+
+},250);
+
+    </script>
+  </body>
+</html>
