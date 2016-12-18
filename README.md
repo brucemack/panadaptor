@@ -1,1 +1,1 @@
-# Panadator
+# Panadaptor Project
