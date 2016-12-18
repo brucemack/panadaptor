@@ -24,11 +24,12 @@ BODY {
     <script src="js/jquery/jquery.min.js"></script>
     <script type="text/javascript">
 
-
+var sampleIntervalMs = 100;
 var lineCount = 128;
 var bucketCount = 32;
+var targetBucket = 10;
 
-var maxMag = 100;
+var maxMag = 1000;
 var lines = [];
 
 for (var i = 0; i < lineCount; i++) {
@@ -52,10 +53,15 @@ function renderSpectrum() {
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  var r = 0,g = 255,b = 0,a = 255;
-  ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + (a/255) + ")";
+  var green = "rgba(0,255,0,1)";
+  var red = "rgba(255,255,0,1)";
 
   for (var b = 0; b < bucketCount && b < lines[0].length; b++) {
+    if (b == targetBucket) {
+      ctx.fillStyle = red;
+    } else {
+      ctx.fillStyle = green;
+    }
     var x = b * scaleX;
     var y = Math.min(canvas.height, Math.trunc((lines[0][b] / maxMag) * canvas.height) );
     //ctx.lineTo(x,canvas.height - y);
@@ -84,7 +90,11 @@ function renderWaterfall() {
   for (var y = 0; y < lineCount && y < lines.length; y++) {
     for (var x = 0; x < bucketCount && x< lines[y].length; x++) {
       g = Math.min(255,Math.trunc((lines[y][x] / maxMag) * 255));
-      ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + (a/255) + ")";
+      if (x == targetBucket) {
+        ctx.fillStyle = "rgba(" + g + "," + g + "," + b + "," + (a/255) + ")";
+      } else {
+        ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + (a/255) + ")";
+      }
       ctx.fillRect(x * scaleX,y * scaleY,scaleX,scaleY);
     }
   }
@@ -107,7 +117,7 @@ setInterval(function() {
       renderWaterfall();
   });
 
-},250);
+},sampleIntervalMs);
 
     </script>
   </body>

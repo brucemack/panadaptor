@@ -31,6 +31,7 @@ function createLineBuilder(eventCb,MAX_BUFFER_SIZE = 1024) {
 var spectrumData = [];
 
 // Temporary
+/*
 setInterval(function() {
     // Create some random data
     var result = "SPECTRUM";
@@ -41,11 +42,11 @@ setInterval(function() {
       result += d;
     }
     lineProcessor(result);
-  },250);
-
+  },500);
+*/
 function lineProcessor(line) {
 
-  console.log("LINE: " + line);
+  //console.log("LINE: " + line);
 
   // Parse
   var tokens = line.split(',');
@@ -73,7 +74,10 @@ var port = new SerialPort("COM3",
 );
 
 // Connect the serial port receiver callback to the line builder
-port.on("data",lineBuilder.processBuffer);
+port.on("data",function(b) {
+  //console.log(b);
+  lineBuilder.processBuffer(b);
+});
 
 app.get("/data",function(req,res) {
   res.type("json");
