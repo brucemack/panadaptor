@@ -3,26 +3,30 @@
     <style>
 BODY {
   padding: 0px;
-  margin: 0px;
+  margin: 10px;
 }
-#canvas0 {
+
+#spectrum0 {
+  background: black;
+}
+
+#waterfall0 {
   background: black;
 }
     </style>
   </head>
   <body>
-    <canvas id="canvas0" width="512" height="512"></canvas>
+    <div>
+      <canvas id="spectrum0" width="256" height="128"></canvas>
+      <br/>
+      <canvas id="waterfall0" width="256" height="256"></canvas>
+    </div>
     <script src="js/jquery/jquery.min.js"></script>
     <script type="text/javascript">
 
-var canvas = document.getElementById("canvas0");
-var ctx = canvas.getContext("2d");
 
 var lineCount = 128;
-var bucketCount = 64;
-
-var scaleX = 8;
-var scaleY = 8;
+var bucketCount = 32;
 
 var maxMag = 100;
 var lines = [];
@@ -39,16 +43,55 @@ function moveDown() {
   lines[0] = [];
 }
 
-function render() {
+function renderSpectrum() {
+
+  var canvas = document.getElementById("spectrum0");
+  var ctx = canvas.getContext("2d");
+
+  var scaleX = canvas.width / bucketCount;
+
   ctx.clearRect(0,0,canvas.width,canvas.height);
+
   var r = 0,g = 255,b = 0,a = 255;
+  ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + (a/255) + ")";
+
+  for (var b = 0; b < bucketCount && b < lines[0].length; b++) {
+    var x = b * scaleX;
+    var y = Math.min(canvas.height, Math.trunc((lines[0][b] / maxMag) * canvas.height) );
+    //ctx.lineTo(x,canvas.height - y);
+    ctx.fillRect(x,canvas.height - y,scaleX,y);
+  }
+
+  ctx.stroke();
+
+  // Center line
+  ctx.fillStyle = "rgba(200,200,200,1)";
+  ctx.fillRect(canvas.width / 2,0,1,canvas.height);
+}
+
+function renderWaterfall() {
+
+  var canvas = document.getElementById("waterfall0");
+  var ctx = canvas.getContext("2d");
+
+  var scaleX = canvas.width / bucketCount;
+  var scaleY = 8;
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  var r = 0,g = 255,b = 0,a = 255;
+
   for (var y = 0; y < lineCount && y < lines.length; y++) {
     for (var x = 0; x < bucketCount && x< lines[y].length; x++) {
-      g = Math.trunc((lines[y][x] / maxMag) * 255);
-      ctx.fillStyle = "rgba("+r+","+g+","+b+","+(a/255)+")";
+      g = Math.min(255,Math.trunc((lines[y][x] / maxMag) * 255));
+      ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + (a/255) + ")";
       ctx.fillRect(x * scaleX,y * scaleY,scaleX,scaleY);
     }
   }
+
+  // Center line
+  ctx.fillStyle = "rgba(200,200,200,1)";
+  ctx.fillRect(canvas.width / 2,0,1,canvas.height);
 }
 
 setInterval(function() {
@@ -60,7 +103,8 @@ setInterval(function() {
       // Insert the new row
       lines[0] = data;
       // Force a draw
-      render();
+      renderSpectrum();
+      renderWaterfall();
   });
 
 },250);
