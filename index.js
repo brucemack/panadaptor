@@ -1,10 +1,9 @@
 const express = require("express");
 const SerialPort = require("serialport");
 const Readline = SerialPort.parsers.Readline;
-const parser = new Readline();
 const app = express();
 
-var port = SerialPort("COM3",{
+var port = new SerialPort("COM3",{
     baudRate: 9600
   },function(err) {
     if (err) {
@@ -14,10 +13,10 @@ var port = SerialPort("COM3",{
     console.log("Opened");
   });
 
-port.pipe(parser);
+//port.pipe(new Readline());
 
 port.on("data",function(data) {
-      consloe.log(data);
+      console.log(new String(data));
 });
 
 app.get("/data",function(req,res) {
