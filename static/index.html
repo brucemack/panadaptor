@@ -6,20 +6,29 @@ BODY {
   margin: 10px;
 }
 
-#spectrum0 {
+canvas {
   background: black;
 }
 
-#waterfall0 {
-  background: black;
-}
     </style>
   </head>
   <body>
     <div>
       <canvas id="spectrum0" width="256" height="128"></canvas>
+      <canvas id="hist0" width="256" height="128"></canvas>
       <br/>
       <canvas id="waterfall0" width="256" height="256"></canvas>
+    </div>
+    <br/>
+    <div>
+      <button id="rangeDown">Range -</button>
+      <button id="rangeUp">Range +</button>
+      Max Range: <span id="range"></span>
+    </div>
+    <div>
+      <button id="targetDown">Target -</button>
+      <button id="targetUp">Target +</button>
+      Target Freq: <span id="target"></span>
     </div>
     <script src="js/jquery/jquery.min.js"></script>
     <script type="text/javascript">
@@ -34,6 +43,14 @@ var lines = [];
 
 for (var i = 0; i < lineCount; i++) {
   lines.push([]);
+}
+
+var hist = [];
+var histSize = 128;
+var histPtr = 0;
+
+for (var i = 0; i < histSize; i++) {
+  hist.push(0);
 }
 
 function moveDown() {
@@ -104,6 +121,56 @@ function renderWaterfall() {
   ctx.fillRect(canvas.width / 2,0,1,canvas.height);
 }
 
+const HIST_BUCKETS = 64;
+
+function renderHistogram() {
+
+  var canvas = document.getElementById("hist0");
+  var ctx = canvas.getContext("2d");
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  var buckets = new Array(HIST_BUCKETS);
+  for (var i = 0; i < HIST_BUCKETS; i++) {
+    buckets[i] = 0;
+  }
+
+  // Fill in the histogram buckets.  This is scaled to the maximum magnitude
+  for (var i = 0; i < histSize; i++) {
+    var bucket = (hist[i] / maxMag);
+    bucket = HIST_BUCKETS * bucket;
+    bucket = Math.trunc(bucket);
+    bucket = Math.min(HIST_BUCKETS - 1,bucket);
+    buckets[bucket] = buckets[bucket] + 1;
+  }
+
+  // Figure out whick bucket has the largest count
+  var maxCount = 0;
+  for (var i = 1; i < HIST_BUCKETS; i++) {
+    maxCount = Math.max(maxCount,buckets[i]);
+  }
+
+  //console.log(maxCount);
+
+  var scaleX = canvas.width / HIST_BUCKETS;
+  var scaleY = canvas.height / maxCount;
+
+  for (var i = 0; i < HIST_BUCKETS; i++) {
+    if (buckets[i]) {
+      var d = buckets[i];
+      ctx.fillStyle = "rgba(255,255,0,1)";
+      ctx.fillRect(i * scaleX,canvas.height - (d * scaleY),scaleX,d * scaleY);
+    }
+  }
+}
+
+function writeSample(sample) {
+  hist[histPtr++] = sample;
+  if (histPtr == histSize) {
+    histPtr = 0;
+  }
+}
+
 setInterval(function() {
 
   // Get some data from the server
@@ -112,12 +179,35 @@ setInterval(function() {
       moveDown();
       // Insert the new row
       lines[0] = data;
+
+      // Capture the target sample
+      writeSample(lines[0][targetBucket]);
+
       // Force a draw
       renderSpectrum();
       renderWaterfall();
+      renderHistogram();
   });
 
+  $("#range").html(maxMag);
+
 },sampleIntervalMs);
+
+$("#rangeUp").click(function() {
+    maxMag += 50;
+});
+
+$("#rangeDown").click(function() {
+    maxMag -= 50;
+});
+
+$("#targetUp").click(function() {
+    targetBucket += 1;
+});
+
+$("#targetDown").click(function() {
+    targetBucket -= 1;
+});
 
     </script>
   </body>

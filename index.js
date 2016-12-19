@@ -31,19 +31,20 @@ function createLineBuilder(eventCb,MAX_BUFFER_SIZE = 1024) {
 var spectrumData = [];
 
 // Temporary
-/*
+
 setInterval(function() {
     // Create some random data
     var result = "SPECTRUM";
     for (var i = 0; i < 32; i++) {
-      //var d = Math.trunc(Math.random() * 100);
-      var d = (i / 32) * 100;
+      var d = 0;
+      d = (i * 3) + Math.trunc(Math.random() * 20);
+      //var d = (i / 32) * 100;
       result += ",";
       result += d;
     }
     lineProcessor(result);
-  },500);
-*/
+  },50);
+
 function lineProcessor(line) {
 
   //console.log("LINE: " + line);
