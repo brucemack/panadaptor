@@ -42,7 +42,9 @@ function createMsgBuilder(eventCb) {
           if (this.buffer.length >= msgLength) {
             // If enough data is available then splice it out and pass it to
             // the callback
-            eventCb(Buffer.from(this.buffer.slice(3,msgLength)));
+            if (msgLength > 0) {
+              eventCb(Buffer.from(this.buffer.slice(3,msgLength)));
+            }
             // Strip that part off the buffer
             if (this.buffer.length == msgLength) {
               this.buffer = null;
@@ -59,7 +61,6 @@ function createMsgBuilder(eventCb) {
     }
   };
 }
-
 
 function createLineBuilder(eventCb,MAX_BUFFER_SIZE = 1024) {
   return {
@@ -100,7 +101,7 @@ var mode0Data = {
 };
 
 // Temporary (test data generator)
-
+/*
 setInterval(function() {
 
     // Create some random data
@@ -120,6 +121,7 @@ setInterval(function() {
     msgBuilder.processBuffer(t0);
 
   },2000);
+*/
 
 const msgBuilder = createMsgBuilder((msg) => {
   // NOTE: The start flag and the length have been stripped off at this point
