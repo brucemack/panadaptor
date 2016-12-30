@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <math.h>
+#include <assert.h>
+
+#include "FIFOBuffer.h"
 
 // Morse array.  MSB->LSB starting from most significant 1
 const unsigned long MORSE_CODES[] = {
@@ -101,10 +104,6 @@ class CWData {
 
   // A constant used for masking off the MSB of a code
   unsigned long msbMask;
-  // The time between samples in milliseconds
-  unsigned int sampleInterval;
-  // The configured Morse code word-per-minute rate to use
-  unsigned int wpm;
   // This is the number of dit spaces per sample, based on the current WPM
   float ditsPerSample;
   // The code that is actively being sampled
@@ -122,7 +121,7 @@ class CWData {
     CWData();
 
     void reset(unsigned int sampleIntervalMs,
-      unsigned int wpm,unsigned long code);
+      float wpm,unsigned long code);
     unsigned int getSamplesRemaining();
     int getSample();
 };
@@ -138,7 +137,7 @@ CWData::CWData() {
 }
 
 void CWData::reset(unsigned int sampleInterval,
-  unsigned int wpm,unsigned long code) {
+  float wpm,unsigned long code) {
   // NOTE: We do this because the datatype size can differ across platforms
   unsigned int initialSize = sizeof(unsigned long) * 8;
   // Shift out the leading zeros, keeping track of what remains
@@ -150,12 +149,9 @@ void CWData::reset(unsigned int sampleInterval,
   }
 
   // Do math related to code speed
-  sampleInterval = sampleInterval;
-  wpm = wpm;
-  // Compute the dit time in ms
-  unsigned int ditTime = 1200 / wpm;
+  float ditTimeMs = 1200.0 / wpm;
   // Compute how many (fractional) dits each sample represents
-  float samplesPerDit = (float)ditTime / (float)sampleInterval;
+  float samplesPerDit = ditTimeMs / (float)sampleInterval;
   ditsPerSample = 1.0 / samplesPerDit;
   fractionalPtr = 0;
   integerPtr = 0;
@@ -177,8 +173,8 @@ int CWData::getSample() {
   if (workingCode & msbMask) {
     result = 1;
   }
-  fractionalPtr += ditsPerSample;
   // Check to see if we've rolled over to a new integer dit
+  fractionalPtr += ditsPerSample;
   if (integerPtr != (unsigned int)fractionalPtr) {
     integerPtr += 1;
     workingCode <<= 1;
@@ -187,7 +183,120 @@ int CWData::getSample() {
   return result;
 }
 
+float compare(FIFOBuffer& rec,CWData& ref) {
+  rec.saveReadPoint();
+  int samples = ref.getSamplesRemaining();
+  int sum = 0;
+  for (int i = 0; i < samples; i++) {
+    int recSample = rec.read();
+    int refSample = ref.getSample();
+    int diff = recSample - refSample;
+    sum += diff * diff;
+  }
+  // TODO: NEED TO REVIEW THIS
+  float err = sqrt((float)sum) / (float)samples;
+  rec.returnToReadPoint();
+  return err;
+}
+
 int main(int argc,const char** argv) {
+
+  unsigned int sampleMs = 8;
+
+  unsigned char buffer[1024];
+  FIFOBuffer recvBuffer(buffer,1024);
+
+  int receivedSymbol = 5;
+  float receivedSpeed = 12;
+
+  // Fill the buffer with a letter
+  {
+    CWData data0;
+    data0.reset(sampleMs,receivedSpeed,MORSE_CODES[receivedSymbol]);
+    while (data0.getSamplesRemaining() > 0) {
+      recvBuffer.write(data0.getSample());
+    }
+  }
+
+  int symbols = sizeof(MORSE_CODES) /  sizeof(unsigned long);
+  float lowestError = 1.0;
+  int lowestErrorSymbol = 0;
+  float assumedSpeed = 12.5;
+
+  // Ensemble search across all of the known symbols to find out which
+  // has the lowest error when compared to the
+  CWData ref;
+  for (int i = 0; i < symbols; i++) {
+    ref.reset(sampleMs,assumedSpeed,MORSE_CODES[i]);
+    float error = compare(recvBuffer,ref);
+    printf("%d %c Error= %f\n",i,ENGLISH_CODES[i],error);
+    if (error < lowestError) {
+      lowestError = error;
+      lowestErrorSymbol = i;
+    }
+  }
+
+  printf("Best: %d %c Error= %f\n",lowestErrorSymbol,
+    ENGLISH_CODES[lowestErrorSymbol],lowestError);
+
+
+  return 0;
+}
+
+
+int main1(int argc,const char** argv) {
+  unsigned char buffer[5];
+
+  FIFOBuffer fifo(buffer,5);
+
+  assert(fifo.available() == 0);
+  assert(fifo.read() == 0);
+
+  fifo.write(1);
+  fifo.saveReadPoint();
+  assert(fifo.available() == 1);
+  assert(fifo.read() == 1);
+  fifo.returnToReadPoint();
+  assert(fifo.available() == 1);
+  assert(fifo.read() == 1);
+  fifo.write(2);
+  fifo.write(3);
+  fifo.write(4);
+  fifo.write(5);
+  fifo.write(6);
+  fifo.write(7);
+  assert(fifo.available() == 5);
+  assert(fifo.read() == 3);
+  assert(fifo.read() == 4);
+  assert(fifo.read() == 5);
+  assert(fifo.read() == 6);
+  assert(fifo.read() == 7);
+  assert(fifo.available() == 0);
+
+  // This is a test that forces a wrap of the write ptr before the read ptr
+  fifo.clear();
+  assert(fifo.available() == 0);
+  fifo.write(1);
+  fifo.read();
+  fifo.write(2);
+  fifo.read();
+  fifo.write(3);
+  fifo.read();
+  fifo.write(4);
+  assert(fifo.read() == 4);
+  fifo.write(5);
+  fifo.write(6);
+  fifo.write(7);
+  assert(fifo.available() == 3);
+  assert(fifo.read() == 5);
+  assert(fifo.read() == 6);
+  assert(fifo.read() == 7);
+  assert(fifo.available() == 0);
+
+  return 0;
+}
+
+int main2(int argc,const char** argv) {
 
   // F
   CWData data0;
